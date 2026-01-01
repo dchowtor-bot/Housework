@@ -125,14 +125,46 @@ const tasks = {
 };
 
 /* ===== TEMP STORAGE (to be replaced in 6C) ===== */
-let data = JSON.parse(localStorage.getItem("choreQuest2026")) || { weeks: {} };
+// ===== CLOUD DATA (Firebase replaces localStorage) =====
+let data = { weeks: {} };
 let pendingChanges = {};
+let isLoadedFromCloud = false;
 
-function saveLocal() {
-  localStorage.setItem("choreQuest2026", JSON.stringify(data));
+// Start Firebase realtime sync
+function startCloudSync() {
+  dataRef.on("value", (snap) => {
+    const cloud = snap.val();
+    if (cloud && typeof cloud === "object") {
+      data = cloud;
+    } else {
+      data = { weeks: {} };
+    }
+    isLoadedFromCloud = true;
+    console.log("📡 Data synced from Firebase");
+
+    // If your full app has render(), call it safely
+    if (typeof render === "function") {
+      render();
+    }
+  }, (err) => {
+    console.error("❌ Firebase sync error", err);
+  });
 }
 
-console.log("✅ App loaded. Firebase ready. LocalStorage active.");
+// Save entire data object to Firebase (simple & safe for now)
+async function save() {
+  if (!isLoadedFromCloud) {
+    console.warn("⚠️ Cloud not loaded yet, skip save");
+    return;
+  }
+  await dataRef.set(data);
+  console.log("☁️ Data saved to Firebase");
+}
+
+// Boot cloud sync immediately
+startCloudSync();
+
+console.log("✅ App loaded. Firebase ready. Cloud sync active.");
 </script>
 
 <footer>Ready for Step 6C · Firebase sync coming next 🚀</footer>
