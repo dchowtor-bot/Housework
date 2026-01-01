@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,34 +21,19 @@
     }
     h1 { text-align: center; margin-bottom: 4px; }
     .subtitle { text-align: center; color: #636e72; margin-bottom: 20px; }
-    .top-bar {
-      display: flex; flex-wrap: wrap; gap: 12px;
-      justify-content: space-between; align-items: center;
-      margin-bottom: 20px;
-    }
-    select, button {
-      padding: 8px 12px; border-radius: 8px;
-      border: 1px solid #dfe6e9; background: white; cursor: pointer;
-    }
-    button.primary { background: var(--accent); color: white; border: none; }
-    .calendar {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;
-    }
-    .day {
-      background: var(--card); border-radius: 16px; padding: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    }
-    .today { outline: 3px solid var(--accent); }
-    .task { display: flex; align-items: center; margin-bottom: 6px; font-size: 0.95rem; }
-    .task input { margin-right: 8px; transform: scale(1.2); }
-    .task small { margin-left: auto; color: #888; }
-    .cat { background: var(--cat); border-radius: 12px; padding: 10px; margin-top: 12px; }
-    .important { color: var(--danger); font-weight: 700; }
-    .panel {
-      margin-top: 32px; background: var(--card); border-radius: 16px;
-      padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    }
-    footer { margin-top: 24px; text-align: center; font-size: 0.8rem; color: #999; }
+    .top-bar { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; margin-bottom:16px; }
+    select, button { padding:8px 12px; border-radius:8px; border:1px solid #dfe6e9; background:white; }
+    button.primary { background:var(--accent); color:white; border:none; cursor:pointer; }
+    .calendar { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+    .day { background:var(--card); border-radius:16px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,.08); }
+    .today { outline:3px solid var(--accent); }
+    .task { display:flex; align-items:center; margin-bottom:6px; font-size:.95rem; }
+    .task input { margin-right:8px; transform:scale(1.2); }
+    .task small { margin-left:auto; color:#888; }
+    .cat { background:var(--cat); border-radius:12px; padding:10px; margin-top:12px; }
+    .important { color:var(--danger); font-weight:700; }
+    .panel { margin-top:24px; background:var(--card); border-radius:16px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,.08); }
+    footer { margin-top:24px; text-align:center; font-size:.8rem; color:#999; }
   </style>
 </head>
 <body>
@@ -57,118 +41,157 @@
 <h1>🏠 Home Chore Quest · 2026</h1>
 <div class="subtitle">Weekly fairness · Monthly truth · Cat meds are sacred 🐱</div>
 
-<!-- ================= FIREBASE (STEP 6A + 6B) ================= -->
+<div class="top-bar">
+  <div>👤 Player: <select id="userSelect"></select></div>
+  <div>📆 Week: <select id="weekSelect"></select></div>
+  <div><button class="primary" onclick="saveChanges()">💾 Save</button> <span id="saveStatus"></span></div>
+</div>
+
+<div class="calendar" id="calendar"></div>
+
+<div class="panel">
+  <h2>🏆 Weekly Ranking</h2>
+  <div id="ranking"></div>
+</div>
+
+<footer>Shared cloud data · Firebase + GitHub Pages</footer>
+
+<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAfiCqoATodKlRkMJbTxAAXwhiNWplx5hQ",
-    authDomain: "home-chore-quest-2026.firebaseapp.com",
-    databaseURL: "https://home-chore-quest-2026-default-rtdb.firebaseio.com",
-    projectId: "home-chore-quest-2026",
-    storageBucket: "home-chore-quest-2026.firebasestorage.app",
-    messagingSenderId: "380059427052",
-    appId: "1:380059427052:web:4ef1a6339121a570b845c9"
-  };
+/**************** FIREBASE SETUP ****************/
+const firebaseConfig = {
+  apiKey: "AIzaSyAfiCqoATodKlRkMJbTxAAXwhiNWplx5hQ",
+  authDomain: "home-chore-quest-2026.firebaseapp.com",
+  databaseURL: "https://home-chore-quest-2026-default-rtdb.firebaseio.com",
+  projectId: "home-chore-quest-2026",
+  storageBucket: "home-chore-quest-2026.firebasestorage.app",
+  messagingSenderId: "380059427052",
+  appId: "1:380059427052:web:4ef1a6339121a570b845c9"
+};
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
 
-  auth.signInAnonymously()
-    .then(() => console.log("✅ Firebase anonymous auth ready"))
-    .catch(err => console.error("❌ Firebase auth error", err));
+const ROOM_ID = "home-2026-main";
+const dataRef = db.ref(`choreQuest/${ROOM_ID}`);
 
-  const ROOM_ID = "home-2026-main";
-  const dataRef = db.ref(`choreQuest/${ROOM_ID}`);
-</script>
-
-<!-- ================= APP LOGIC (STILL localStorage, will swap in 6C) ================= -->
-<script>
-/* ===== CONFIG ===== */
+/**************** APP DATA ****************/
 const YEAR = 2026;
 const players = ["Dennis","Sharon","Robert"];
 const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 const tasks = {
-  general: [
-    "🍽 清洗碗盤 → 放入洗碗機",
-    "🍽 洗碗機完成後 → 放回碗櫃",
-    "🧺 洗衣後 → 清理洗衣機",
-    "🧺 乾衣完成 → 取走衣物",
-    "👕 摺衫",
-    "🧹 吸塵",
-    "🛋 執好梳化",
-    "🪑 執好兩張枱",
-    "🍳 抹爐頭",
-    "🍽 抹廚房枱面",
-    "🧊 清理雪櫃過期食物",
-    "🗑 倒垃圾＋換袋",
-    "🚽 清理廁所",
-    "📦 清理廚房雜物 → 放回櫃"
-  ],
+  general: ["🍽 洗碗 → 放入洗碗機","🧺 洗衣","👕 摺衫","🧹 吸塵","🗑 倒垃圾","🚽 清理廁所"],
   cat: [
-    { name: "💊 Cat Med – 早上 餵藥", important: true },
-    { name: "💊 Cat Med – 夜晚 餵藥", important: true },
-    { name: "🐱 換水碗（每 2–3 日一次）" },
-    { name: "🐱 洗糧食兜（每 2–3 日一次）" },
-    { name: "🐱 加糧入糧機" },
-    { name: "🐱 執屎＋清屎袋" },
-    { name: "🐱 執尿" },
-    { name: "🐱 陪玩 10 分鐘" },
-    { name: "🐱 疏毛 10 分鐘" },
-    { name: "🐱 剪指甲" },
-    { name: "🐱 沖涼" },
-    { name: "🚰 清洗飲水機＋換 Filter（每月 15 號）", important: true }
+    { name: "💊 Cat Med – 早上", important:true },
+    { name: "💊 Cat Med – 夜晚", important:true },
+    { name: "🐱 執屎" },
+    { name: "🐱 執尿" }
   ]
 };
 
-/* ===== TEMP STORAGE (to be replaced in 6C) ===== */
-// ===== CLOUD DATA (Firebase replaces localStorage) =====
-let data = { weeks: {} };
-let pendingChanges = {};
-let isLoadedFromCloud = false;
+let data = { weeks:{} };
+let pending = {};
+let cloudReady = false;
 
-// Start Firebase realtime sync
-function startCloudSync() {
-  dataRef.on("value", (snap) => {
-    const cloud = snap.val();
-    if (cloud && typeof cloud === "object") {
-      data = cloud;
-    } else {
-      data = { weeks: {} };
-    }
-    isLoadedFromCloud = true;
-    console.log("📡 Data synced from Firebase");
+/**************** HELPERS ****************/
+function getWeekNumber(d=new Date()){
+  const oneJan=new Date(YEAR,0,1);
+  return Math.ceil((((d-oneJan)/86400000)+oneJan.getDay()+1)/7);
+}
+function weekKey(w){ return `${YEAR}-W${w}`; }
 
-    // If your full app has render(), call it safely
-    if (typeof render === "function") {
-      render();
-    }
-  }, (err) => {
-    console.error("❌ Firebase sync error", err);
+/**************** CLOUD SYNC ****************/
+auth.signInAnonymously().then(()=>{
+  dataRef.on("value",snap=>{
+    data = snap.val() || { weeks:{} };
+    cloudReady = true;
+    render();
+  });
+});
+
+/**************** UI ****************/
+const calendarEl=document.getElementById("calendar");
+const rankingEl=document.getElementById("ranking");
+const userSelect=document.getElementById("userSelect");
+const weekSelect=document.getElementById("weekSelect");
+
+players.forEach(p=>{
+  const o=document.createElement('option'); o.textContent=p; userSelect.appendChild(o);
+});
+
+for(let i=1;i<=53;i++){
+  const o=document.createElement('option'); o.value=weekKey(i); o.textContent=`Week ${i}`;
+  if(i===getWeekNumber()) o.selected=true;
+  weekSelect.appendChild(o);
+}
+
+function toggle(day,task){
+  if(!cloudReady) return;
+  const user=userSelect.value;
+  const wk=weekSelect.value;
+  if(!pending[wk]) pending[wk]={};
+  const key=day+task;
+  const base=(data.weeks[wk]?.completed?.[key])||[];
+  let next=[...base];
+  if(next.includes(user)) next=next.filter(u=>u!==user);
+  else next.push(user);
+  pending[wk][key]=next;
+  render();
+}
+
+async function saveChanges(){
+  const wk=weekSelect.value;
+  if(!pending[wk]) return;
+  if(!data.weeks[wk]) data.weeks[wk]={completed:{}};
+  Object.entries(pending[wk]).forEach(([k,v])=>{
+    if(v.length===0) delete data.weeks[wk].completed[k];
+    else data.weeks[wk].completed[k]=v;
+  });
+  pending[wk]={};
+  await dataRef.child("weeks").child(wk).set(data.weeks[wk]);
+  document.getElementById('saveStatus').textContent="Saved ✔";
+  setTimeout(()=>document.getElementById('saveStatus').textContent="",1200);
+}
+
+function render(){
+  if(!cloudReady) return;
+  calendarEl.innerHTML="";
+  rankingEl.innerHTML="";
+  const wk=weekSelect.value;
+  const week=data.weeks[wk]||{completed:{}};
+
+  const scores={ Dennis:0,Sharon:0,Robert:0 };
+
+  days.forEach(day=>{
+    const card=document.createElement('div'); card.className='day';
+    card.innerHTML=`<h3>${day}</h3>`;
+    tasks.general.forEach(t=>{
+      const key=day+t;
+      const done=week.completed[key]||[];
+      done.forEach(u=>scores[u]++);
+      card.innerHTML+=`<div class='task'><input type='checkbox' ${done.includes(userSelect.value)?'checked':''} onclick="toggle('${day}','${t}')">${t}<small>${done.join(', ')}</small></div>`;
+    });
+    let cat=`<div class='cat'>`;
+    tasks.cat.forEach(t=>{
+      const key=day+t.name;
+      const done=week.completed[key]||[];
+      done.forEach(u=>scores[u]+=t.important?3:1);
+      cat+=`<div class='task'><input type='checkbox' ${done.includes(userSelect.value)?'checked':''} onclick="toggle('${day}','${t.name}')"><span class='${t.important?'important':''}'>${t.name}</span><small>${done.join(', ')}</small></div>`;
+    }); cat+=`</div>`;
+    card.innerHTML+=cat;
+    calendarEl.appendChild(card);
+  });
+
+  Object.entries(scores).forEach(([p,s])=>{
+    rankingEl.innerHTML+=`<div>${p}: <strong>${s} pts</strong></div>`;
   });
 }
-
-// Save entire data object to Firebase (simple & safe for now)
-async function save() {
-  if (!isLoadedFromCloud) {
-    console.warn("⚠️ Cloud not loaded yet, skip save");
-    return;
-  }
-  await dataRef.set(data);
-  console.log("☁️ Data saved to Firebase");
-}
-
-// Boot cloud sync immediately
-startCloudSync();
-
-console.log("✅ App loaded. Firebase ready. Cloud sync active.");
 </script>
-
-<footer>Ready for Step 6C · Firebase sync coming next 🚀</footer>
-
 </body>
 </html>
