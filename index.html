@@ -77,14 +77,15 @@
   </div>
 
   <div class="top-bar">
-    <div>👤 Player: <select id="userSelect"></select></div>
+    <div>👤 Player: <select id="userSelect" onchange="render()"></select></div>
     <div>📆 View:
       <select id="periodSelect" onchange="render()">
         <option value="week">This Week</option>
         <option value="month">This Month</option>
       </select>
     </div>
-    <div>⏮ Week: <select id="weekSelect" onchange="render()"></select></div>
+    <div id="weekPicker">⏮ Week: <select id="weekSelect" onchange="render()"></select></div>
+    <div id="monthPicker" style="display:none;">🗓 Month: <select id="monthSelect" onchange="render()"></select></div>
     <div><button class="primary" onclick="goToday()">📍 Today</button></div>
   </div>
 
@@ -154,6 +155,9 @@ const rankingEl = document.getElementById("ranking");
 const userSelect = document.getElementById("userSelect");
 const periodSelect = document.getElementById("periodSelect");
 const weekSelect = document.getElementById("weekSelect");
+const weekPicker = document.getElementById("weekPicker");
+const monthPicker = document.getElementById("monthPicker");
+const monthSelect = document.getElementById("monthSelect");
 const panelTitle = document.getElementById("panelTitle");
 
 players.forEach(p => {
@@ -184,6 +188,13 @@ function getWeekData(weekKey) {
   if (!data.weeks[weekKey]) data.weeks[weekKey] = { completed: {} };
   return data.weeks[weekKey];
 }
+
+function normalizeUsers(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  if (typeof val === 'string') return [val];
+  return [];
+}
 function getValidKeysSet() {
   const valid = new Set();
   days.forEach(day => {
@@ -197,14 +208,30 @@ function cleanupWeekData(weekKey) {
   const week = getWeekData(weekKey);
   const valid = getValidKeysSet();
   let changed = false;
+
   Object.keys(week.completed).forEach(k => {
-    const u = week.completed[k];
-    // Remove entries that no longer map to current task list or unknown player
-    if (!valid.has(k) || !players.includes(u)) {
+    if (!valid.has(k)) {
       delete week.completed[k];
       changed = true;
+      return;
+    }
+
+    const users = normalizeUsers(week.completed[k]);
+    // keep only known players, unique
+    const cleaned = Array.from(new Set(users.filter(u => players.includes(u))));
+
+    if (cleaned.length === 0) {
+      delete week.completed[k];
+      changed = true;
+    } else {
+      // migrate old string format -> array format, and clean invalid entries
+      if (!Array.isArray(week.completed[k]) || JSON.stringify(cleaned) !== JSON.stringify(week.completed[k])) {
+        week.completed[k] = cleaned;
+        changed = true;
+      }
     }
   });
+
   if (changed) save();
   return week;
 }
@@ -215,9 +242,12 @@ function isMedTaskKey(key) {
 
 function calculateScores(week) {
   const scores = { Dennis: 0, Sharon: 0, Robert: 0 };
-  Object.entries(week.completed).forEach(([k, u]) => {
-    if (!scores.hasOwnProperty(u)) return;
-    scores[u] += isMedTaskKey(k) ? 3 : 1;
+  Object.entries(week.completed).forEach(([k, users]) => {
+    if (!Array.isArray(users)) return;
+    users.forEach(u => {
+      if (!scores.hasOwnProperty(u)) return;
+      scores[u] += isMedTaskKey(k) ? 3 : 1;
+    });
   });
   return scores;
 }
@@ -277,24 +307,24 @@ function toggleTask(day, task) {
   });
 
   const key = day + task;
-  const assignedTo = current[key];
+  const assignedTo = normalizeUsers(current[key]);
 
   // Behavior:
   // - If unassigned -> assign to selected player
   // - If assigned to selected player -> unassign (set null)
   // - If assigned to someone else -> reassign to selected player
-  if (!assignedTo) {
-    pendingChanges[weekKey][key] = user;
-  } else if (assignedTo === user) {
-    pendingChanges[weekKey][key] = null;
+  if (!assignedTo.includes(user)) {
+    pendingChanges[weekKey][key] = [...assignedTo, user];
   } else {
-    pendingChanges[weekKey][key] = user;
+    const next = assignedTo.filter(u => u !== user);
+    pendingChanges[weekKey][key] = next.length ? next : null;
   }
 
   // Remove no-op entries (if pending equals base)
-  const baseAssigned = baseWeek.completed[key];
+  const baseAssigned = normalizeUsers(baseWeek.completed[key]);
   const pend = pendingChanges[weekKey][key];
-  if ((pend === null && !baseAssigned) || (pend !== null && pend === baseAssigned)) {
+  const pendUsers = (pend === null) ? [] : normalizeUsers(pend);
+  if ((pend === null && baseAssigned.length === 0) || (pend !== null && JSON.stringify(pendUsers) === JSON.stringify(baseAssigned))) {
     delete pendingChanges[weekKey][key];
   }
   if (pendingChanges[weekKey] && Object.keys(pendingChanges[weekKey]).length === 0) {
@@ -310,7 +340,12 @@ function render() {
   calendarEl.innerHTML = '';
   rankingEl.innerHTML = '';
 
-  if (periodSelect.value === 'week') {
+  // Toggle pickers based on view
+  const isWeek = periodSelect.value === 'week';
+  weekPicker.style.display = isWeek ? '' : 'none';
+  monthPicker.style.display = isWeek ? 'none' : '';
+
+  if (isWeek) {
     const weekKey = weekSelect.value;
     const weekNum = parseInt(weekKey.split('-W')[1]);
     const range = getWeekDateRange(weekNum);
@@ -323,7 +358,10 @@ function render() {
         else week.completed[k] = v;
       });
     }
-    const scores = calculateScores(week);
+    // Weekly ranking: show SAVED scores, plus a clear PREVIEW if there are unsaved changes
+    const savedScores = calculateScores(baseWeek);
+    const previewScores = calculateScores(week);
+    const hasUnsaved = hasPending(weekKey);
     const today = new Date().getDay();
 
     panelTitle.textContent = `🏆 Weekly Ranking · ${formatDate(range.start)} – ${formatDate(range.end)}`;
@@ -335,20 +373,22 @@ function render() {
 
       tasks.general.forEach(t => {
         const k = day + t;
-        const done = week.completed[k];
+        const done = normalizeUsers(week.completed[k]);
+        const checked = done.includes(userSelect.value);
         card.innerHTML += `<div class='task'>
-          <input type='checkbox' ${done ? 'checked' : ''} onchange="toggleTask('${day}','${t}')" />
-          ${t}<small>${done || ''}</small></div>`;
+          <input type='checkbox' ${checked ? 'checked' : ''} onchange="toggleTask('${day}','${t}')" />
+          ${t}<small>${Array.isArray(done) ? done.join(', ') : ''}</small></div>`;
       });
 
       let catHtml = `<div class='cat'>`;
       tasks.cat.forEach(t => {
         const k = day + t.name;
-        const done = week.completed[k];
+        const done = normalizeUsers(week.completed[k]);
+        const checked = done.includes(userSelect.value);
         catHtml += `<div class='task'>
-          <input type='checkbox' ${done ? 'checked' : ''} onchange="toggleTask('${day}','${t.name}')" />
+          <input type='checkbox' ${checked ? 'checked' : ''} onchange="toggleTask('${day}','${t.name}')" />
           <span class='${t.important ? 'important' : ''}'>${t.name}</span>
-          <small>${done || ''}</small></div>`;
+          <small>${Array.isArray(done) ? done.join(', ') : ''}</small></div>`;
       });
       catHtml += `</div>`;
       card.innerHTML += catHtml;
@@ -356,24 +396,41 @@ function render() {
     });
 
     players.forEach(p => {
-      rankingEl.innerHTML += `<div>${p}: <strong>${scores[p]} pts</strong></div>`;
+      const saved = savedScores[p];
+      const preview = previewScores[p];
+      const diff = preview - saved;
+      const diffText = hasUnsaved && diff !== 0 ? ` <span style="color:#636e72; font-size:0.9rem;">(preview ${diff>0?'+':''}${diff} after Save)</span>` : '';
+      rankingEl.innerHTML += `<div>${p}: <strong>${saved} pts</strong>${diffText}</div>`;
     });
 
+    if (hasUnsaved) {
+      rankingEl.innerHTML += `<div style="margin-top:10px; color:#636e72; font-size:0.85rem;">Tip: ranking is based on <strong>saved</strong> records. Click <strong>Save</strong> to make previews official.</div>`;
+    }
+
   } else {
-    panelTitle.textContent = '🏆 Monthly Summary (Current Month)';
-    const currentMonth = new Date().getMonth();
+    const m = parseInt(monthSelect.value);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    panelTitle.textContent = `🏆 Monthly Summary · ${monthNames[m]} ${YEAR}`;
+    const currentMonth = parseInt(monthSelect.value);
+    const monthStart = new Date(YEAR, currentMonth, 1);
+    const monthEnd = new Date(YEAR, currentMonth + 1, 0, 23, 59, 59, 999);
     const totals = { Dennis: 0, Sharon: 0, Robert: 0 };
     const meds = { Dennis: 0, Sharon: 0, Robert: 0 };
 
     Object.entries(data.weeks).forEach(([wk, wdata]) => {
+      // Ensure old data formats are migrated/cleaned before monthly totals
+      wdata = cleanupWeekData(wk);
       const wkNum = parseInt(wk.split('-W')[1]);
       const range = getWeekDateRange(wkNum);
-      if (range.start.getMonth() !== currentMonth) return;
+      // Include any week that overlaps the selected month
+      if (range.end < monthStart || range.start > monthEnd) return;
 
       const scores = calculateScores(wdata);
       players.forEach(p => totals[p] += scores[p]);
       Object.entries(wdata.completed).forEach(([k, u]) => {
-        if (isMedTaskKey(k)) meds[u]++;
+        if (!isMedTaskKey(k)) return;
+        const users = normalizeUsers(u);
+        users.forEach(p => { if (meds[p] !== undefined) meds[p]++; });
       });
     });
 
@@ -391,6 +448,19 @@ function goToday() {
 
 /* ===== INIT ===== */
 function init() {
+  // Month selector
+  const monthNamesFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  monthSelect.innerHTML = '';
+  for (let m = 0; m < 12; m++) {
+    const o = document.createElement('option');
+    o.value = String(m);
+    o.textContent = monthNamesFull[m];
+    monthSelect.appendChild(o);
+  }
+  // Default month: if current year matches, use current month; otherwise start at January
+  const now = new Date();
+  monthSelect.value = (now.getFullYear() === YEAR) ? String(now.getMonth()) : '0';
+
   const currentWeek = getWeekNumber();
   weekSelect.innerHTML = '';
   for (let i = 1; i <= 53; i++) {
