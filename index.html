@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏠 Home Chore Quest 2026</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --accent: #6c5ce7;
+      --cat: #ffeaa7;
+      --danger: #d63031;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 24px;
+      color: #2d3436;
+    }
+    h1 { text-align: center; margin-bottom: 4px; }
+    .subtitle { text-align: center; color: #636e72; margin-bottom: 20px; }
+    .top-bar {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      justify-content: space-between; align-items: center;
+      margin-bottom: 20px;
+    }
+    select, button {
+      padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #dfe6e9; background: white; cursor: pointer;
+    }
+    button.primary { background: var(--accent); color: white; border: none; }
+    .calendar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;
+    }
+    .day {
+      background: var(--card); border-radius: 16px; padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    .today { outline: 3px solid var(--accent); }
+    .task { display: flex; align-items: center; margin-bottom: 6px; font-size: 0.95rem; }
+    .task input { margin-right: 8px; transform: scale(1.2); }
+    .task small { margin-left: auto; color: #888; }
+    .cat { background: var(--cat); border-radius: 12px; padding: 10px; margin-top: 12px; }
+    .important { color: var(--danger); font-weight: 700; }
+    .panel {
+      margin-top: 32px; background: var(--card); border-radius: 16px;
+      padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    footer { margin-top: 24px; text-align: center; font-size: 0.8rem; color: #999; }
+  </style>
+</head>
+<body>
+  <h1>🏠 Home Chore Quest · 2026</h1>
+  <div class="subtitle">Weekly fairness · Monthly truth · Cat meds are sacred 🐱</div>
+
+  <div class="panel" style="margin-top:16px;">
+    <h3>👋 How to use (Daily)</h3>
+    <div style="font-size:0.95rem; line-height:1.6; color:#2d3436;">
+      1️⃣ Select <strong>your name</strong><br/>
+      2️⃣ Tick the tasks <strong>you personally completed</strong><br/>
+      3️⃣ Click <strong>💾 Save Today’s Records</strong> to record<br/>
+      <br/>
+      ✔ Only <strong>saved</strong> tasks count toward ranking<br/>
+      ✔ You can change or undo ticks <strong>before saving</strong>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:12px;">
+    <h3>🏠 House rules</h3>
+    <div style="font-size:0.95rem; line-height:1.6; color:#2d3436;">
+      • Please only tick tasks <strong>you actually did</strong><br/>
+      • If a task was done together, agree before ticking<br/>
+      • Try to update and save <strong>before going to bed</strong>
+    </div>
+  </div>
+
+  <div class="top-bar">
+    <div>👤 Player: <select id="userSelect"></select></div>
+    <div>📆 View:
+      <select id="periodSelect" onchange="render()">
+        <option value="week">This Week</option>
+        <option value="month">This Month</option>
+      </select>
+    </div>
+    <div>⏮ Week: <select id="weekSelect" onchange="render()"></select></div>
+    <div><button class="primary" onclick="goToday()">📍 Today</button></div>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <div style="margin-top:16px; text-align:center;">
+    <button class="primary" onclick="saveChanges()">💾 Save Today’s Records</button>
+    <span id="saveStatus" style="margin-left:12px; color:#636e72;"></span>
+  </div>
+
+  <div class="panel">
+    <h2 id="panelTitle">🏆 Ranking</h2>
+    <div style="font-size:0.85rem; color:#636e72; margin-bottom:8px; line-height:1.4;">
+      <strong>How points are calculated:</strong><br/>
+      • Regular housework / cat tasks = <strong>1 point</strong> each<br/>
+      • <strong>Cat medication (早上 / 夜晚)</strong> = <strong>3 points</strong> each (higher priority)<br/>
+      • Only <strong>saved</strong> checkmarks count toward ranking<br/>
+      • Unsaved changes are previews and do not affect scores
+    </div>
+    <div id="ranking"></div>
+  </div>
+
+  <footer>Calm system for a healthy home · Data over arguments · Built for 2026 ✨</footer>
+
+<script>
+/* ===== CONFIG ===== */
+const YEAR = 2026;
+const players = ["Dennis","Sharon","Robert"];
+const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+const tasks = {
+  general: [
+    "🍽 清洗碗盤 → 放入洗碗機",
+    "🍽 洗碗機完成後 → 放回碗櫃",
+    "🧺 洗衣後 → 清理洗衣機",
+    "🧺 乾衣完成 → 取走衣物",
+    "👕 摺衫",
+    "🧹 吸塵",
+    "🛋 執好梳化",
+    "🪑 執好兩張枱",
+    "🍳 抹爐頭",
+    "🍽 抹廚房枱面",
+    "🧊 清理雪櫃過期食物",
+    "🗑 倒垃圾＋換袋",
+    "🚽 清理廁所",
+    "📦 清理廚房雜物 → 放回櫃"
+  ],
+  cat: [
+    { name: "💊 Cat Med – 早上 餵藥", important: true },
+    { name: "💊 Cat Med – 夜晚 餵藥", important: true },
+    { name: "🐱 換水碗（每 2–3 日一次）" },
+    { name: "🐱 洗糧食兜（每 2–3 日一次）" },
+    { name: "🐱 加糧入糧機" },
+    { name: "🐱 執屎＋清屎袋" },
+    { name: "🐱 執尿" },
+    { name: "🐱 陪玩 10 分鐘" },
+    { name: "🐱 疏毛 10 分鐘" },
+    { name: "🐱 剪指甲" },
+    { name: "🐱 沖涼" },
+    { name: "🚰 清洗飲水機＋換 Filter（每月 15 號）", important: true }
+  ]
+};
+
+/* ===== DOM ===== */
+const calendarEl = document.getElementById("calendar");
+const rankingEl = document.getElementById("ranking");
+const userSelect = document.getElementById("userSelect");
+const periodSelect = document.getElementById("periodSelect");
+const weekSelect = document.getElementById("weekSelect");
+const panelTitle = document.getElementById("panelTitle");
+
+players.forEach(p => {
+  const o = document.createElement('option');
+  o.textContent = p;
+  userSelect.appendChild(o);
+});
+
+let data = JSON.parse(localStorage.getItem("choreQuest2026")) || { weeks: {} };
+let pendingChanges = {}; // buffer of unsaved edits per weekKey: { [taskKey]: string | null } (null = remove assignment)
+
+/* ===== DATE HELPERS ===== */
+function getWeekNumber(date = new Date()) {
+  const oneJan = new Date(YEAR, 0, 1);
+  return Math.ceil((((date - oneJan) / 86400000) + oneJan.getDay() + 1) / 7);
+}
+function getWeekKey(week) { return `${YEAR}-W${week}`; }
+function getWeekDateRange(week) {
+  const firstDay = new Date(YEAR, 0, 1);
+  const start = new Date(YEAR, 0, 1 + (week - 1) * 7 - firstDay.getDay());
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+function formatDate(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
+
+/* ===== DATA ===== */
+function getWeekData(weekKey) {
+  if (!data.weeks[weekKey]) data.weeks[weekKey] = { completed: {} };
+  return data.weeks[weekKey];
+}
+function getValidKeysSet() {
+  const valid = new Set();
+  days.forEach(day => {
+    tasks.general.forEach(t => valid.add(day + t));
+    tasks.cat.forEach(t => valid.add(day + t.name));
+  });
+  return valid;
+}
+
+function cleanupWeekData(weekKey) {
+  const week = getWeekData(weekKey);
+  const valid = getValidKeysSet();
+  let changed = false;
+  Object.keys(week.completed).forEach(k => {
+    const u = week.completed[k];
+    // Remove entries that no longer map to current task list or unknown player
+    if (!valid.has(k) || !players.includes(u)) {
+      delete week.completed[k];
+      changed = true;
+    }
+  });
+  if (changed) save();
+  return week;
+}
+
+function isMedTaskKey(key) {
+  return key.includes('Cat Med') || key.includes('餵藥');
+}
+
+function calculateScores(week) {
+  const scores = { Dennis: 0, Sharon: 0, Robert: 0 };
+  Object.entries(week.completed).forEach(([k, u]) => {
+    if (!scores.hasOwnProperty(u)) return;
+    scores[u] += isMedTaskKey(k) ? 3 : 1;
+  });
+  return scores;
+}
+function save() {
+  localStorage.setItem("choreQuest2026", JSON.stringify(data));
+}
+
+function hasPending(weekKey){
+  return !!(pendingChanges[weekKey] && Object.keys(pendingChanges[weekKey]).length);
+}
+
+function updateSaveUI(){
+  const weekKey = weekSelect.value;
+  const btn = document.querySelector('button.primary[onclick="saveChanges()"]');
+  if(!btn) return;
+  btn.disabled = !hasPending(weekKey);
+  btn.style.opacity = btn.disabled ? 0.55 : 1;
+  document.getElementById('saveStatus').textContent = hasPending(weekKey) ? 'Unsaved changes…' : '';
+}
+
+function saveChanges() {
+  const weekKey = weekSelect.value;
+  if (!hasPending(weekKey)) {
+    document.getElementById('saveStatus').textContent = 'Nothing to save';
+    setTimeout(()=>document.getElementById('saveStatus').textContent='',1200);
+    return;
+  }
+
+  const week = getWeekData(weekKey);
+  Object.entries(pendingChanges[weekKey]).forEach(([k, v]) => {
+    if (v === null) delete week.completed[k];
+    else week.completed[k] = v;
+  });
+
+  delete pendingChanges[weekKey];
+  save();
+
+  document.getElementById('saveStatus').textContent = 'Saved ✔';
+  setTimeout(()=>document.getElementById('saveStatus').textContent='',1500);
+  render();
+}
+
+/* ===== ACTIONS ===== */
+function toggleTask(day, task) {
+  if (periodSelect.value !== 'week') return;
+
+  const user = userSelect.value;
+  const weekKey = weekSelect.value;
+  if (!pendingChanges[weekKey]) pendingChanges[weekKey] = {};
+
+  // Build current visible state (base + pending) so toggling behaves like a real user expects
+  const baseWeek = cleanupWeekData(weekKey);
+  const current = { ...baseWeek.completed };
+  Object.entries(pendingChanges[weekKey]).forEach(([k, v]) => {
+    if (v === null) delete current[k];
+    else current[k] = v;
+  });
+
+  const key = day + task;
+  const assignedTo = current[key];
+
+  // Behavior:
+  // - If unassigned -> assign to selected player
+  // - If assigned to selected player -> unassign (set null)
+  // - If assigned to someone else -> reassign to selected player
+  if (!assignedTo) {
+    pendingChanges[weekKey][key] = user;
+  } else if (assignedTo === user) {
+    pendingChanges[weekKey][key] = null;
+  } else {
+    pendingChanges[weekKey][key] = user;
+  }
+
+  // Remove no-op entries (if pending equals base)
+  const baseAssigned = baseWeek.completed[key];
+  const pend = pendingChanges[weekKey][key];
+  if ((pend === null && !baseAssigned) || (pend !== null && pend === baseAssigned)) {
+    delete pendingChanges[weekKey][key];
+  }
+  if (pendingChanges[weekKey] && Object.keys(pendingChanges[weekKey]).length === 0) {
+    delete pendingChanges[weekKey];
+  }
+
+  render();
+}
+
+/* ===== RENDER ===== */
+function render() {
+  updateSaveUI();
+  calendarEl.innerHTML = '';
+  rankingEl.innerHTML = '';
+
+  if (periodSelect.value === 'week') {
+    const weekKey = weekSelect.value;
+    const weekNum = parseInt(weekKey.split('-W')[1]);
+    const range = getWeekDateRange(weekNum);
+    const baseWeek = cleanupWeekData(weekKey);
+    const week = { completed: { ...baseWeek.completed } };
+    // Apply pending changes (including deletions)
+    if (pendingChanges[weekKey]) {
+      Object.entries(pendingChanges[weekKey]).forEach(([k, v]) => {
+        if (v === null) delete week.completed[k];
+        else week.completed[k] = v;
+      });
+    }
+    const scores = calculateScores(week);
+    const today = new Date().getDay();
+
+    panelTitle.textContent = `🏆 Weekly Ranking · ${formatDate(range.start)} – ${formatDate(range.end)}`;
+
+    days.forEach((day, i) => {
+      const card = document.createElement('div');
+      card.className = 'day' + (i === today ? ' today' : '');
+      card.innerHTML = `<h3>${day}</h3>`;
+
+      tasks.general.forEach(t => {
+        const k = day + t;
+        const done = week.completed[k];
+        card.innerHTML += `<div class='task'>
+          <input type='checkbox' ${done ? 'checked' : ''} onchange="toggleTask('${day}','${t}')" />
+          ${t}<small>${done || ''}</small></div>`;
+      });
+
+      let catHtml = `<div class='cat'>`;
+      tasks.cat.forEach(t => {
+        const k = day + t.name;
+        const done = week.completed[k];
+        catHtml += `<div class='task'>
+          <input type='checkbox' ${done ? 'checked' : ''} onchange="toggleTask('${day}','${t.name}')" />
+          <span class='${t.important ? 'important' : ''}'>${t.name}</span>
+          <small>${done || ''}</small></div>`;
+      });
+      catHtml += `</div>`;
+      card.innerHTML += catHtml;
+      calendarEl.appendChild(card);
+    });
+
+    players.forEach(p => {
+      rankingEl.innerHTML += `<div>${p}: <strong>${scores[p]} pts</strong></div>`;
+    });
+
+  } else {
+    panelTitle.textContent = '🏆 Monthly Summary (Current Month)';
+    const currentMonth = new Date().getMonth();
+    const totals = { Dennis: 0, Sharon: 0, Robert: 0 };
+    const meds = { Dennis: 0, Sharon: 0, Robert: 0 };
+
+    Object.entries(data.weeks).forEach(([wk, wdata]) => {
+      const wkNum = parseInt(wk.split('-W')[1]);
+      const range = getWeekDateRange(wkNum);
+      if (range.start.getMonth() !== currentMonth) return;
+
+      const scores = calculateScores(wdata);
+      players.forEach(p => totals[p] += scores[p]);
+      Object.entries(wdata.completed).forEach(([k, u]) => {
+        if (isMedTaskKey(k)) meds[u]++;
+      });
+    });
+
+    players.forEach(p => {
+      rankingEl.innerHTML += `<div>${p}: <strong>${totals[p]} pts</strong> · 🐱 Meds: ${meds[p]}</div>`;
+    });
+  }
+}
+
+function goToday() {
+  periodSelect.value = 'week';
+  weekSelect.value = getWeekKey(getWeekNumber());
+  render();
+}
+
+/* ===== INIT ===== */
+function init() {
+  const currentWeek = getWeekNumber();
+  weekSelect.innerHTML = '';
+  for (let i = 1; i <= 53; i++) {
+    const range = getWeekDateRange(i);
+    const o = document.createElement('option');
+    o.value = getWeekKey(i);
+    o.textContent = `Week ${i} (${formatDate(range.start)}–${formatDate(range.end)})`;
+    if (i === currentWeek) o.selected = true;
+    weekSelect.appendChild(o);
+  }
+  render();
+}
+
+// Warn users if they try to close/refresh with unsaved changes in the current week
+window.addEventListener('beforeunload', (e) => {
+  const wk = weekSelect.value;
+  if (periodSelect.value === 'week' && hasPending(wk)) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+init();
+</script>
+</body>
+</html>
