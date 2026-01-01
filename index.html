@@ -52,64 +52,39 @@
   </style>
 </head>
 <body>
-  <h1>🏠 Home Chore Quest · 2026</h1>
-  <div class="subtitle">Weekly fairness · Monthly truth · Cat meds are sacred 🐱</div>
 
-  <div class="panel" style="margin-top:16px;">
-    <h3>👋 How to use (Daily)</h3>
-    <div style="font-size:0.95rem; line-height:1.6; color:#2d3436;">
-      1️⃣ Select <strong>your name</strong><br/>
-      2️⃣ Tick the tasks <strong>you personally completed</strong><br/>
-      3️⃣ Click <strong>💾 Save Today’s Records</strong> to record<br/>
-      <br/>
-      ✔ Only <strong>saved</strong> tasks count toward ranking<br/>
-      ✔ You can change or undo ticks <strong>before saving</strong>
-    </div>
-  </div>
+<h1>🏠 Home Chore Quest · 2026</h1>
+<div class="subtitle">Weekly fairness · Monthly truth · Cat meds are sacred 🐱</div>
 
-  <div class="panel" style="margin-top:12px;">
-    <h3>🏠 House rules</h3>
-    <div style="font-size:0.95rem; line-height:1.6; color:#2d3436;">
-      • Please only tick tasks <strong>you actually did</strong><br/>
-      • If a task was done together, agree before ticking<br/>
-      • Try to update and save <strong>before going to bed</strong>
-    </div>
-  </div>
+<!-- ================= FIREBASE (STEP 6A + 6B) ================= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
 
-  <div class="top-bar">
-    <div>👤 Player: <select id="userSelect" onchange="render()"></select></div>
-    <div>📆 View:
-      <select id="periodSelect" onchange="render()">
-        <option value="week">This Week</option>
-        <option value="month">This Month</option>
-      </select>
-    </div>
-    <div id="weekPicker">⏮ Week: <select id="weekSelect" onchange="render()"></select></div>
-    <div id="monthPicker" style="display:none;">🗓 Month: <select id="monthSelect" onchange="render()"></select></div>
-    <div><button class="primary" onclick="goToday()">📍 Today</button></div>
-  </div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAfiCqoATodKlRkMJbTxAAXwhiNWplx5hQ",
+    authDomain: "home-chore-quest-2026.firebaseapp.com",
+    databaseURL: "https://home-chore-quest-2026-default-rtdb.firebaseio.com",
+    projectId: "home-chore-quest-2026",
+    storageBucket: "home-chore-quest-2026.firebasestorage.app",
+    messagingSenderId: "380059427052",
+    appId: "1:380059427052:web:4ef1a6339121a570b845c9"
+  };
 
-  <div class="calendar" id="calendar"></div>
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
 
-  <div style="margin-top:16px; text-align:center;">
-    <button class="primary" onclick="saveChanges()">💾 Save Today’s Records</button>
-    <span id="saveStatus" style="margin-left:12px; color:#636e72;"></span>
-  </div>
+  auth.signInAnonymously()
+    .then(() => console.log("✅ Firebase anonymous auth ready"))
+    .catch(err => console.error("❌ Firebase auth error", err));
 
-  <div class="panel">
-    <h2 id="panelTitle">🏆 Ranking</h2>
-    <div style="font-size:0.85rem; color:#636e72; margin-bottom:8px; line-height:1.4;">
-      <strong>How points are calculated:</strong><br/>
-      • Regular housework / cat tasks = <strong>1 point</strong> each<br/>
-      • <strong>Cat medication (早上 / 夜晚)</strong> = <strong>3 points</strong> each (higher priority)<br/>
-      • Only <strong>saved</strong> checkmarks count toward ranking<br/>
-      • Unsaved changes are previews and do not affect scores
-    </div>
-    <div id="ranking"></div>
-  </div>
+  const ROOM_ID = "home-2026-main";
+  const dataRef = db.ref(`choreQuest/${ROOM_ID}`);
+</script>
 
-  <footer>Calm system for a healthy home · Data over arguments · Built for 2026 ✨</footer>
-
+<!-- ================= APP LOGIC (STILL localStorage, will swap in 6C) ================= -->
 <script>
 /* ===== CONFIG ===== */
 const YEAR = 2026;
@@ -149,341 +124,18 @@ const tasks = {
   ]
 };
 
-/* ===== DOM ===== */
-const calendarEl = document.getElementById("calendar");
-const rankingEl = document.getElementById("ranking");
-const userSelect = document.getElementById("userSelect");
-const periodSelect = document.getElementById("periodSelect");
-const weekSelect = document.getElementById("weekSelect");
-const weekPicker = document.getElementById("weekPicker");
-const monthPicker = document.getElementById("monthPicker");
-const monthSelect = document.getElementById("monthSelect");
-const panelTitle = document.getElementById("panelTitle");
-
-players.forEach(p => {
-  const o = document.createElement('option');
-  o.textContent = p;
-  userSelect.appendChild(o);
-});
-
+/* ===== TEMP STORAGE (to be replaced in 6C) ===== */
 let data = JSON.parse(localStorage.getItem("choreQuest2026")) || { weeks: {} };
-let pendingChanges = {}; // buffer of unsaved edits per weekKey: { [taskKey]: string | null } (null = remove assignment)
+let pendingChanges = {};
 
-/* ===== DATE HELPERS ===== */
-function getWeekNumber(date = new Date()) {
-  const oneJan = new Date(YEAR, 0, 1);
-  return Math.ceil((((date - oneJan) / 86400000) + oneJan.getDay() + 1) / 7);
-}
-function getWeekKey(week) { return `${YEAR}-W${week}`; }
-function getWeekDateRange(week) {
-  const firstDay = new Date(YEAR, 0, 1);
-  const start = new Date(YEAR, 0, 1 + (week - 1) * 7 - firstDay.getDay());
-  const end = new Date(start); end.setDate(start.getDate() + 6);
-  return { start, end };
-}
-function formatDate(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
-
-/* ===== DATA ===== */
-function getWeekData(weekKey) {
-  if (!data.weeks[weekKey]) data.weeks[weekKey] = { completed: {} };
-  return data.weeks[weekKey];
-}
-
-function normalizeUsers(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.filter(Boolean);
-  if (typeof val === 'string') return [val];
-  return [];
-}
-function getValidKeysSet() {
-  const valid = new Set();
-  days.forEach(day => {
-    tasks.general.forEach(t => valid.add(day + t));
-    tasks.cat.forEach(t => valid.add(day + t.name));
-  });
-  return valid;
-}
-
-function cleanupWeekData(weekKey) {
-  const week = getWeekData(weekKey);
-  const valid = getValidKeysSet();
-  let changed = false;
-
-  Object.keys(week.completed).forEach(k => {
-    if (!valid.has(k)) {
-      delete week.completed[k];
-      changed = true;
-      return;
-    }
-
-    const users = normalizeUsers(week.completed[k]);
-    // keep only known players, unique
-    const cleaned = Array.from(new Set(users.filter(u => players.includes(u))));
-
-    if (cleaned.length === 0) {
-      delete week.completed[k];
-      changed = true;
-    } else {
-      // migrate old string format -> array format, and clean invalid entries
-      if (!Array.isArray(week.completed[k]) || JSON.stringify(cleaned) !== JSON.stringify(week.completed[k])) {
-        week.completed[k] = cleaned;
-        changed = true;
-      }
-    }
-  });
-
-  if (changed) save();
-  return week;
-}
-
-function isMedTaskKey(key) {
-  return key.includes('Cat Med') || key.includes('餵藥');
-}
-
-function calculateScores(week) {
-  const scores = { Dennis: 0, Sharon: 0, Robert: 0 };
-  Object.entries(week.completed).forEach(([k, users]) => {
-    if (!Array.isArray(users)) return;
-    users.forEach(u => {
-      if (!scores.hasOwnProperty(u)) return;
-      scores[u] += isMedTaskKey(k) ? 3 : 1;
-    });
-  });
-  return scores;
-}
-function save() {
+function saveLocal() {
   localStorage.setItem("choreQuest2026", JSON.stringify(data));
 }
 
-function hasPending(weekKey){
-  return !!(pendingChanges[weekKey] && Object.keys(pendingChanges[weekKey]).length);
-}
-
-function updateSaveUI(){
-  const weekKey = weekSelect.value;
-  const btn = document.querySelector('button.primary[onclick="saveChanges()"]');
-  if(!btn) return;
-  btn.disabled = !hasPending(weekKey);
-  btn.style.opacity = btn.disabled ? 0.55 : 1;
-  document.getElementById('saveStatus').textContent = hasPending(weekKey) ? 'Unsaved changes…' : '';
-}
-
-function saveChanges() {
-  const weekKey = weekSelect.value;
-  if (!hasPending(weekKey)) {
-    document.getElementById('saveStatus').textContent = 'Nothing to save';
-    setTimeout(()=>document.getElementById('saveStatus').textContent='',1200);
-    return;
-  }
-
-  const week = getWeekData(weekKey);
-  Object.entries(pendingChanges[weekKey]).forEach(([k, v]) => {
-    if (v === null) delete week.completed[k];
-    else week.completed[k] = v;
-  });
-
-  delete pendingChanges[weekKey];
-  save();
-
-  document.getElementById('saveStatus').textContent = 'Saved ✔';
-  setTimeout(()=>document.getElementById('saveStatus').textContent='',1500);
-  render();
-}
-
-/* ===== ACTIONS ===== */
-function toggleTask(day, task) {
-  if (periodSelect.value !== 'week') return;
-
-  const user = userSelect.value;
-  const weekKey = weekSelect.value;
-  if (!pendingChanges[weekKey]) pendingChanges[weekKey] = {};
-
-  // Build current visible state (base + pending) so toggling behaves like a real user expects
-  const baseWeek = cleanupWeekData(weekKey);
-  const current = { ...baseWeek.completed };
-  Object.entries(pendingChanges[weekKey]).forEach(([k, v]) => {
-    if (v === null) delete current[k];
-    else current[k] = v;
-  });
-
-  const key = day + task;
-  const assignedTo = normalizeUsers(current[key]);
-
-  // Behavior:
-  // - If unassigned -> assign to selected player
-  // - If assigned to selected player -> unassign (set null)
-  // - If assigned to someone else -> reassign to selected player
-  if (!assignedTo.includes(user)) {
-    pendingChanges[weekKey][key] = [...assignedTo, user];
-  } else {
-    const next = assignedTo.filter(u => u !== user);
-    pendingChanges[weekKey][key] = next.length ? next : null;
-  }
-
-  // Remove no-op entries (if pending equals base)
-  const baseAssigned = normalizeUsers(baseWeek.completed[key]);
-  const pend = pendingChanges[weekKey][key];
-  const pendUsers = (pend === null) ? [] : normalizeUsers(pend);
-  if ((pend === null && baseAssigned.length === 0) || (pend !== null && JSON.stringify(pendUsers) === JSON.stringify(baseAssigned))) {
-    delete pendingChanges[weekKey][key];
-  }
-  if (pendingChanges[weekKey] && Object.keys(pendingChanges[weekKey]).length === 0) {
-    delete pendingChanges[weekKey];
-  }
-
-  render();
-}
-
-/* ===== RENDER ===== */
-function render() {
-  updateSaveUI();
-  calendarEl.innerHTML = '';
-  rankingEl.innerHTML = '';
-
-  // Toggle pickers based on view
-  const isWeek = periodSelect.value === 'week';
-  weekPicker.style.display = isWeek ? '' : 'none';
-  monthPicker.style.display = isWeek ? 'none' : '';
-
-  if (isWeek) {
-    const weekKey = weekSelect.value;
-    const weekNum = parseInt(weekKey.split('-W')[1]);
-    const range = getWeekDateRange(weekNum);
-    const baseWeek = cleanupWeekData(weekKey);
-    const week = { completed: { ...baseWeek.completed } };
-    // Apply pending changes (including deletions)
-    if (pendingChanges[weekKey]) {
-      Object.entries(pendingChanges[weekKey]).forEach(([k, v]) => {
-        if (v === null) delete week.completed[k];
-        else week.completed[k] = v;
-      });
-    }
-    // Weekly ranking: show SAVED scores, plus a clear PREVIEW if there are unsaved changes
-    const savedScores = calculateScores(baseWeek);
-    const previewScores = calculateScores(week);
-    const hasUnsaved = hasPending(weekKey);
-    const today = new Date().getDay();
-
-    panelTitle.textContent = `🏆 Weekly Ranking · ${formatDate(range.start)} – ${formatDate(range.end)}`;
-
-    days.forEach((day, i) => {
-      const card = document.createElement('div');
-      card.className = 'day' + (i === today ? ' today' : '');
-      card.innerHTML = `<h3>${day}</h3>`;
-
-      tasks.general.forEach(t => {
-        const k = day + t;
-        const done = normalizeUsers(week.completed[k]);
-        const checked = done.includes(userSelect.value);
-        card.innerHTML += `<div class='task'>
-          <input type='checkbox' ${checked ? 'checked' : ''} onchange="toggleTask('${day}','${t}')" />
-          ${t}<small>${Array.isArray(done) ? done.join(', ') : ''}</small></div>`;
-      });
-
-      let catHtml = `<div class='cat'>`;
-      tasks.cat.forEach(t => {
-        const k = day + t.name;
-        const done = normalizeUsers(week.completed[k]);
-        const checked = done.includes(userSelect.value);
-        catHtml += `<div class='task'>
-          <input type='checkbox' ${checked ? 'checked' : ''} onchange="toggleTask('${day}','${t.name}')" />
-          <span class='${t.important ? 'important' : ''}'>${t.name}</span>
-          <small>${Array.isArray(done) ? done.join(', ') : ''}</small></div>`;
-      });
-      catHtml += `</div>`;
-      card.innerHTML += catHtml;
-      calendarEl.appendChild(card);
-    });
-
-    players.forEach(p => {
-      const saved = savedScores[p];
-      const preview = previewScores[p];
-      const diff = preview - saved;
-      const diffText = hasUnsaved && diff !== 0 ? ` <span style="color:#636e72; font-size:0.9rem;">(preview ${diff>0?'+':''}${diff} after Save)</span>` : '';
-      rankingEl.innerHTML += `<div>${p}: <strong>${saved} pts</strong>${diffText}</div>`;
-    });
-
-    if (hasUnsaved) {
-      rankingEl.innerHTML += `<div style="margin-top:10px; color:#636e72; font-size:0.85rem;">Tip: ranking is based on <strong>saved</strong> records. Click <strong>Save</strong> to make previews official.</div>`;
-    }
-
-  } else {
-    const m = parseInt(monthSelect.value);
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    panelTitle.textContent = `🏆 Monthly Summary · ${monthNames[m]} ${YEAR}`;
-    const currentMonth = parseInt(monthSelect.value);
-    const monthStart = new Date(YEAR, currentMonth, 1);
-    const monthEnd = new Date(YEAR, currentMonth + 1, 0, 23, 59, 59, 999);
-    const totals = { Dennis: 0, Sharon: 0, Robert: 0 };
-    const meds = { Dennis: 0, Sharon: 0, Robert: 0 };
-
-    Object.entries(data.weeks).forEach(([wk, wdata]) => {
-      // Ensure old data formats are migrated/cleaned before monthly totals
-      wdata = cleanupWeekData(wk);
-      const wkNum = parseInt(wk.split('-W')[1]);
-      const range = getWeekDateRange(wkNum);
-      // Include any week that overlaps the selected month
-      if (range.end < monthStart || range.start > monthEnd) return;
-
-      const scores = calculateScores(wdata);
-      players.forEach(p => totals[p] += scores[p]);
-      Object.entries(wdata.completed).forEach(([k, u]) => {
-        if (!isMedTaskKey(k)) return;
-        const users = normalizeUsers(u);
-        users.forEach(p => { if (meds[p] !== undefined) meds[p]++; });
-      });
-    });
-
-    players.forEach(p => {
-      rankingEl.innerHTML += `<div>${p}: <strong>${totals[p]} pts</strong> · 🐱 Meds: ${meds[p]}</div>`;
-    });
-  }
-}
-
-function goToday() {
-  periodSelect.value = 'week';
-  weekSelect.value = getWeekKey(getWeekNumber());
-  render();
-}
-
-/* ===== INIT ===== */
-function init() {
-  // Month selector
-  const monthNamesFull = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  monthSelect.innerHTML = '';
-  for (let m = 0; m < 12; m++) {
-    const o = document.createElement('option');
-    o.value = String(m);
-    o.textContent = monthNamesFull[m];
-    monthSelect.appendChild(o);
-  }
-  // Default month: if current year matches, use current month; otherwise start at January
-  const now = new Date();
-  monthSelect.value = (now.getFullYear() === YEAR) ? String(now.getMonth()) : '0';
-
-  const currentWeek = getWeekNumber();
-  weekSelect.innerHTML = '';
-  for (let i = 1; i <= 53; i++) {
-    const range = getWeekDateRange(i);
-    const o = document.createElement('option');
-    o.value = getWeekKey(i);
-    o.textContent = `Week ${i} (${formatDate(range.start)}–${formatDate(range.end)})`;
-    if (i === currentWeek) o.selected = true;
-    weekSelect.appendChild(o);
-  }
-  render();
-}
-
-// Warn users if they try to close/refresh with unsaved changes in the current week
-window.addEventListener('beforeunload', (e) => {
-  const wk = weekSelect.value;
-  if (periodSelect.value === 'week' && hasPending(wk)) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
-});
-
-init();
+console.log("✅ App loaded. Firebase ready. LocalStorage active.");
 </script>
+
+<footer>Ready for Step 6C · Firebase sync coming next 🚀</footer>
+
 </body>
 </html>
