@@ -5,35 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🏠 Home Chore Quest 2026</title>
   <style>
-    :root {
-      --bg: #f4f6f8;
-      --card: #ffffff;
-      --accent: #6c5ce7;
-      --cat: #ffeaa7;
-      --danger: #d63031;
+    :root{
+      --bg:#f4f6f8; --card:#ffffff; --accent:#6c5ce7; --cat:#ffeaa7; --danger:#d63031;
     }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      margin: 0;
-      padding: 24px;
-      color: #2d3436;
-    }
-    h1 { text-align: center; margin-bottom: 4px; }
-    .subtitle { text-align: center; color: #636e72; margin-bottom: 20px; }
-    .top-bar { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; margin-bottom:16px; }
-    select, button { padding:8px 12px; border-radius:8px; border:1px solid #dfe6e9; background:white; }
-    button.primary { background:var(--accent); color:white; border:none; cursor:pointer; }
-    .calendar { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
-    .day { background:var(--card); border-radius:16px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,.08); }
-    .today { outline:3px solid var(--accent); }
-    .task { display:flex; align-items:center; margin-bottom:6px; font-size:.95rem; }
-    .task input { margin-right:8px; transform:scale(1.2); }
-    .task small { margin-left:auto; color:#888; }
-    .cat { background:var(--cat); border-radius:12px; padding:10px; margin-top:12px; }
-    .important { color:var(--danger); font-weight:700; }
-    .panel { margin-top:24px; background:var(--card); border-radius:16px; padding:16px; box-shadow:0 10px 25px rgba(0,0,0,.08); }
-    footer { margin-top:24px; text-align:center; font-size:.8rem; color:#999; }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);margin:0;padding:24px;color:#2d3436}
+    h1{text-align:center;margin-bottom:4px}
+    .subtitle{text-align:center;color:#636e72;margin-bottom:16px}
+    .top-bar{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:16px}
+    select,button{padding:8px 12px;border-radius:8px;border:1px solid #dfe6e9;background:#fff}
+    button.primary{background:var(--accent);color:#fff;border:none;cursor:pointer}
+    .calendar{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+    .day{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
+    .today{outline:3px solid var(--accent)}
+    .task{display:flex;align-items:center;margin-bottom:6px;font-size:.95rem}
+    .task input{margin-right:8px;transform:scale(1.2)}
+    .task small{margin-left:auto;color:#888}
+    .cat{background:var(--cat);border-radius:12px;padding:10px;margin-top:12px}
+    .important{color:var(--danger);font-weight:700}
+    .panel{margin-top:20px;background:var(--card);border-radius:16px;padding:16px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
+    footer{margin-top:24px;text-align:center;font-size:.8rem;color:#999}
   </style>
 </head>
 <body>
@@ -44,17 +34,25 @@
 <div class="top-bar">
   <div>👤 Player: <select id="userSelect"></select></div>
   <div>📆 Week: <select id="weekSelect"></select></div>
-  <div><button class="primary" onclick="saveChanges()">💾 Save</button> <span id="saveStatus"></span></div>
+  <div>
+    <button class="primary" onclick="saveChanges()">💾 Save</button>
+    <span id="saveStatus" style="margin-left:8px;color:#636e72"></span>
+  </div>
 </div>
 
 <div class="calendar" id="calendar"></div>
 
 <div class="panel">
   <h2>🏆 Weekly Ranking</h2>
+  <div style="font-size:.85rem;color:#636e72;margin-bottom:8px">
+    • Normal task = 1 pt<br>
+    • 💊 Cat Med (早上 / 夜晚) = 3 pts each<br>
+    • 🚰 飲水機＋Filter = 2 pts
+  </div>
   <div id="ranking"></div>
 </div>
 
-<footer>Shared cloud data · Firebase + GitHub Pages</footer>
+<footer>Shared cloud data · Firebase + GitHub Pages · 2026</footer>
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
@@ -62,134 +60,134 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
 
 <script>
-/**************** FIREBASE SETUP ****************/
-const firebaseConfig = {
-  apiKey: "AIzaSyAfiCqoATodKlRkMJbTxAAXwhiNWplx5hQ",
-  authDomain: "home-chore-quest-2026.firebaseapp.com",
-  databaseURL: "https://home-chore-quest-2026-default-rtdb.firebaseio.com",
-  projectId: "home-chore-quest-2026",
-  storageBucket: "home-chore-quest-2026.firebasestorage.app",
-  messagingSenderId: "380059427052",
-  appId: "1:380059427052:web:4ef1a6339121a570b845c9"
-};
-
+/******** FIREBASE ********/
+const firebaseConfig={apiKey:"AIzaSyAfiCqoATodKlRkMJbTxAAXwhiNWplx5hQ",authDomain:"home-chore-quest-2026.firebaseapp.com",databaseURL:"https://home-chore-quest-2026-default-rtdb.firebaseio.com",projectId:"home-chore-quest-2026",storageBucket:"home-chore-quest-2026.firebasestorage.app",messagingSenderId:"380059427052",appId:"1:380059427052:web:4ef1a6339121a570b845c9"};
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
+const auth=firebase.auth();
+const db=firebase.database();
+const ROOM_ID="home-2026-main";
+const dataRef=db.ref(`choreQuest/${ROOM_ID}`);
 
-const ROOM_ID = "home-2026-main";
-const dataRef = db.ref(`choreQuest/${ROOM_ID}`);
+/******** CONFIG ********/
+const YEAR=2026;
+const players=["Dennis","Sharon","Robert"];
+const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-/**************** APP DATA ****************/
-const YEAR = 2026;
-const players = ["Dennis","Sharon","Robert"];
-const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-
-const tasks = {
-  general: ["🍽 洗碗 → 放入洗碗機","🧺 洗衣","👕 摺衫","🧹 吸塵","🗑 倒垃圾","🚽 清理廁所"],
-  cat: [
-    { name: "💊 Cat Med – 早上", important:true },
-    { name: "💊 Cat Med – 夜晚", important:true },
-    { name: "🐱 執屎" },
-    { name: "🐱 執尿" }
+const tasks={
+  general:[
+    "🍽 清洗碗盤 → 放入洗碗機",
+    "🍽 洗碗機完成後 → 放回碗櫃",
+    "🧺 洗衣後 → 清理洗衣機",
+    "🧺 乾衣完成 → 取走衣物",
+    "👕 摺衫",
+    "🧹 吸塵",
+    "🛋 執好梳化",
+    "🪑 執好兩張枱",
+    "🍳 抹爐頭",
+    "🍽 抹廚房枱面",
+    "🧊 清理雪櫃過期食物",
+    "🗑 倒垃圾＋換袋",
+    "🚽 清理廁所",
+    "📦 清理廚房雜物 → 放回櫃"
+  ],
+  cat:[
+    {name:"💊 Cat Med – 早上 餵藥",important:true,pts:3},
+    {name:"💊 Cat Med – 夜晚 餵藥",important:true,pts:3},
+    {name:"🐱 換水碗（每 2–3 日一次）"},
+    {name:"🐱 洗糧食兜（每 2–3 日一次）"},
+    {name:"🐱 加糧入糧機"},
+    {name:"🐱 執屎＋清屎袋"},
+    {name:"🐱 執尿"},
+    {name:"🐱 陪玩 10 分鐘"},
+    {name:"🐱 疏毛 10 分鐘"},
+    {name:"🐱 剪指甲"},
+    {name:"🐱 沖涼"},
+    {name:"🚰 清洗飲水機＋換 Filter（每月 15 號）",important:true,pts:2}
   ]
 };
 
-let data = { weeks:{} };
-let pending = {};
-let cloudReady = false;
+let data={weeks:{}};
+let pending={};
+let ready=false;
 
-/**************** HELPERS ****************/
 function getWeekNumber(d=new Date()){
   const oneJan=new Date(YEAR,0,1);
   return Math.ceil((((d-oneJan)/86400000)+oneJan.getDay()+1)/7);
 }
-function weekKey(w){ return `${YEAR}-W${w}`; }
+function wk(k){return `${YEAR}-W${k}`}
 
-/**************** CLOUD SYNC ****************/
+/******** CLOUD SYNC ********/
 auth.signInAnonymously().then(()=>{
   dataRef.on("value",snap=>{
-    data = snap.val() || { weeks:{} };
-    cloudReady = true;
+    data=snap.val()||{weeks:{}};
+    ready=true;
     render();
   });
 });
 
-/**************** UI ****************/
-const calendarEl=document.getElementById("calendar");
-const rankingEl=document.getElementById("ranking");
-const userSelect=document.getElementById("userSelect");
-const weekSelect=document.getElementById("weekSelect");
+/******** UI ********/
+const cal=document.getElementById('calendar');
+const rank=document.getElementById('ranking');
+const userSel=document.getElementById('userSelect');
+const weekSel=document.getElementById('weekSelect');
 
-players.forEach(p=>{
-  const o=document.createElement('option'); o.textContent=p; userSelect.appendChild(o);
-});
-
-for(let i=1;i<=53;i++){
-  const o=document.createElement('option'); o.value=weekKey(i); o.textContent=`Week ${i}`;
-  if(i===getWeekNumber()) o.selected=true;
-  weekSelect.appendChild(o);
-}
+players.forEach(p=>{const o=document.createElement('option');o.textContent=p;userSel.appendChild(o)});
+for(let i=1;i<=53;i++){const o=document.createElement('option');o.value=wk(i);o.textContent=`Week ${i}`;if(i===getWeekNumber())o.selected=true;weekSel.appendChild(o)}
 
 function toggle(day,task){
-  if(!cloudReady) return;
-  const user=userSelect.value;
-  const wk=weekSelect.value;
-  if(!pending[wk]) pending[wk]={};
+  if(!ready) return;
+  const u=userSel.value;
+  const w=weekSel.value;
+  if(!pending[w]) pending[w]={};
   const key=day+task;
-  const base=(data.weeks[wk]?.completed?.[key])||[];
+  const base=data.weeks[w]?.completed?.[key]||[];
   let next=[...base];
-  if(next.includes(user)) next=next.filter(u=>u!==user);
-  else next.push(user);
-  pending[wk][key]=next;
+  next.includes(u)? next=next.filter(x=>x!==u): next.push(u);
+  pending[w][key]=next;
   render();
 }
 
 async function saveChanges(){
-  const wk=weekSelect.value;
-  if(!pending[wk]) return;
-  if(!data.weeks[wk]) data.weeks[wk]={completed:{}};
-  Object.entries(pending[wk]).forEach(([k,v])=>{
-    if(v.length===0) delete data.weeks[wk].completed[k];
-    else data.weeks[wk].completed[k]=v;
+  const w=weekSel.value;
+  if(!pending[w]) return;
+  if(!data.weeks[w]) data.weeks[w]={completed:{}};
+  Object.entries(pending[w]).forEach(([k,v])=>{
+    v.length? data.weeks[w].completed[k]=v: delete data.weeks[w].completed[k];
   });
-  pending[wk]={};
-  await dataRef.child("weeks").child(wk).set(data.weeks[wk]);
-  document.getElementById('saveStatus').textContent="Saved ✔";
-  setTimeout(()=>document.getElementById('saveStatus').textContent="",1200);
+  pending[w]={};
+  await dataRef.child('weeks').child(w).set(data.weeks[w]);
+  document.getElementById('saveStatus').textContent='Saved ✔';
+  setTimeout(()=>document.getElementById('saveStatus').textContent='',1200);
 }
 
 function render(){
-  if(!cloudReady) return;
-  calendarEl.innerHTML="";
-  rankingEl.innerHTML="";
-  const wk=weekSelect.value;
-  const week=data.weeks[wk]||{completed:{}};
+  if(!ready) return;
+  cal.innerHTML=''; rank.innerHTML='';
+  const w=weekSel.value;
+  const week=data.weeks[w]||{completed:{}};
+  const scores={Dennis:0,Sharon:0,Robert:0};
 
-  const scores={ Dennis:0,Sharon:0,Robert:0 };
-
-  days.forEach(day=>{
+  days.forEach(d=>{
     const card=document.createElement('div'); card.className='day';
-    card.innerHTML=`<h3>${day}</h3>`;
+    card.innerHTML=`<h3>${d}</h3>`;
     tasks.general.forEach(t=>{
-      const key=day+t;
-      const done=week.completed[key]||[];
+      const k=d+t; const done=week.completed[k]||[];
       done.forEach(u=>scores[u]++);
-      card.innerHTML+=`<div class='task'><input type='checkbox' ${done.includes(userSelect.value)?'checked':''} onclick="toggle('${day}','${t}')">${t}<small>${done.join(', ')}</small></div>`;
+      card.innerHTML+=`<div class='task'><input type='checkbox' ${done.includes(userSel.value)?'checked':''} onclick="toggle('${d}','${t}')">${t}<small>${done.join(', ')}</small></div>`;
     });
-    let cat=`<div class='cat'>`;
+    let catHtml=`<div class='cat'>`;
     tasks.cat.forEach(t=>{
-      const key=day+t.name;
-      const done=week.completed[key]||[];
-      done.forEach(u=>scores[u]+=t.important?3:1);
-      cat+=`<div class='task'><input type='checkbox' ${done.includes(userSelect.value)?'checked':''} onclick="toggle('${day}','${t.name}')"><span class='${t.important?'important':''}'>${t.name}</span><small>${done.join(', ')}</small></div>`;
-    }); cat+=`</div>`;
-    card.innerHTML+=cat;
-    calendarEl.appendChild(card);
+      const k=d+t.name; const done=week.completed[k]||[];
+      done.forEach(u=>scores[u]+=(t.pts||1));
+      catHtml+=`<div class='task'><input type='checkbox' ${done.includes(userSel.value)?'checked':''} onclick="toggle('${d}','${t.name}')"><span class='${t.important?'important':''}'>${t.name}</span><small>${done.join(', ')}</small></div>`;
+    });
+    catHtml+='</div>';
+    card.innerHTML+=catHtml;
+    cal.appendChild(card);
   });
 
   Object.entries(scores).forEach(([p,s])=>{
-    rankingEl.innerHTML+=`<div>${p}: <strong>${s} pts</strong></div>`;
+    rank.innerHTML+=`<div>${p}: <strong>${s} pts</strong></div>`;
   });
 }
 </script>
